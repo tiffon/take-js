@@ -72,7 +72,7 @@ For a more complex example, see the [reddit sample](https://github.com/tiffon/ta
 ## Install
 
 ```SHELL
-npm  install take
+npm  install take-dsl
 ```
 
 ## Usage
@@ -84,7 +84,7 @@ A take template is created from an `Array` of `string`s with each `string` being
 To create a template:
 
 ```JavaScript
-var TakeTemplate = require('take').TakeTemplate,
+var TakeTemplate = require('take-dsl').TakeTemplate,
     TMPL = [
         '$ nav a',
         '    save each: nav',
@@ -93,7 +93,7 @@ var TakeTemplate = require('take').TakeTemplate,
         '        | [href]',
         '            save: link'
     ],
-    tt = TakeTemplate(TMPL);
+    tt = new TakeTemplate(TMPL);
 ```
 
 

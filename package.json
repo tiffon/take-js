@@ -1,7 +1,7 @@
 {
   "name": "take-dsl",
   "version": "0.0.0",
-  "description": "A DSL for extracting data from a web page. The DSL serves two purposes: finds elements and extracts their text or attribute values. The main reason for developing this is to have all the CSS selectors for scraping a site in one place. The DSL wraps cheerio.",
+  "description": "A DSL for extracting data from a web page. The DSL serves two purposes: finds elements and extracts their text or attribute values. The main reason for developing this is to have all the CSS selectors for scraping a site in one place.",
   "keywords": [
     "scrape",
     "scraping",
