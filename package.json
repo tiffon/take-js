@@ -1,31 +1,22 @@
 {
   "name": "take-dsl",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A DSL for extracting data from a web page. The DSL serves two purposes: finds elements and extracts their text or attribute values. The main reason for developing this is to have all the CSS selectors for scraping a site in one place.",
   "keywords": [
-    "scrape",
     "scraping",
-    "html",
-    "web",
-    "web scaping",
-    "web scaper",
-    "extract",
+    "scraper",
     "extraction",
-    "data extraction",
-    "text processing",
-    "markup",
-    "markup processing",
-    "take"
+    "html"
   ],
   "homepage": "https://github.com/tiffon/take-js",
   "bugs": {
-    "url" : "https://github.com/tiffon/take-js/issues"
+    "url": "https://github.com/tiffon/take-js/issues"
   },
   "license": "MIT",
   "main": "index.js",
   "directories": {
     "test": "./test",
-    "lib":"./lib"
+    "lib": "./lib"
   },
   "scripts": {
     "test": "./test.sh"
@@ -34,12 +25,6 @@
     "type": "git",
     "url": "https://github.com/tiffon/take-js.git"
   },
-  "keywords": [
-    "scraping",
-    "scraper",
-    "extraction",
-    "html"
-  ],
   "author": "Joe Farro <joe@jf.io> (http://jf.io)",
   "dependencies": {
     "cheerio": "~0.19.0"
