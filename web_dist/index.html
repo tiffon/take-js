@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ghetto Demo Server</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        textarea {
+            font-family: monospace;
+            width: 80%;
+            height: 240px;
+        }
+        button {
+            display: block;
+            padding: 0.5rem;
+            float: right;
+            margin: 0.5rem 20% 0 0;
+        }
+    </style>
+</head>
+<body>
+    <h3>take template:</h3>
+    <textarea id="tmpl">
+$ h1 | text
+    save: h1_title
+$ ul
+    save each: uls
+        $ li
+            | 0 [title]
+                save: title
+            | 1 text
+                save: second_li
+$ p | 1 text
+    save: p_text
+</textarea>
+
+    <button id="apply">apply</button>
+    <br>Compile result: <small>(shift + enter)</small>
+    <pre id="compile">...</pre>
+
+    <br><br>
+
+    <h3>test html:</h3>
+    <textarea id="html">
+<div>
+    <h1>Le Title 1</h1>
+    <p>Some body here</p>
+    <h2 class="second title">The second title</h2>
+    <p>Another body here</p>
+    <ul id="a">
+        <li title="a less than awesome title">A first li</li>
+        <li>A second li</li>
+        <li>A third li</li>
+    </ul>
+    <ul id="b">
+        <li title="some awesome title">B first li</li>
+        <li>B second li</li>
+        <li>B third li</li>
+    </ul>
+</div>
+</textarea>
+    <br><br>
+    <h3>result:</h3>
+    <textarea id="result">
+    </textarea>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="take.js"></script>
+    <script>
+
+        var TakeTemplate = take.TakeTemplate,
+            tt;
+
+        var body = document.body,
+            tmpl = body.querySelector('#tmpl'),
+            applyBtn = body.querySelector('#apply'),
+            compileResult = body.querySelector('#compile'),
+            testHtml = body.querySelector('#html'),
+            output = body.querySelector('#result');
+
+        function compile() {
+            try {
+                tt = new TakeTemplate(tmpl.value.split('\n'));
+            } catch (e) {
+                compileResult.textContent = 'Error:\n' + e;
+                tt = undefined;
+            }
+            if (tt) {
+                compileResult.textContent = 'Compiled at ' + (new Date()).toTimeString();
+            }
+            return !!tt;
+        }
+
+        function applyTemplate() {
+            var data;
+            try {
+                data = tt.take(testHtml.value);
+                output.textContent = JSON.stringify(data, null, 4);
+            } catch (e) {
+                output.textContent = 'Error:\n' + e;
+            }
+        }
+
+        function compileAndRun() {
+            if (compile()) {
+                applyTemplate();
+            } else {
+                output.textContent = 'See compile error above.';
+            }
+        }
+
+        applyBtn.addEventListener('click', compileAndRun);
+        body.addEventListener('keydown', function(event) {
+            if (event.shiftKey && (event.keyCode === 13 || event.code === 13)) {
+                compileAndRun();
+                event.preventDefault();
+            }
+        });
+
+
+    </script>
+</body>
+</html>
