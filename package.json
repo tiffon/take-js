@@ -19,7 +19,7 @@
     "lib": "./lib"
   },
   "scripts": {
-    "test": "./test.sh"
+    "test": "./node_modules/mocha/bin/mocha --require should -R ${1:-spec} test"
   },
   "repository": {
     "type": "git",
