@@ -20,7 +20,8 @@
   },
   "scripts": {
     "test": "./node_modules/mocha/bin/mocha --require should -R ${1:-spec} test",
-    "start": "cd web_dist && python -m SimpleHTTPServer $@"
+    "start": "cd web_dist && python -m SimpleHTTPServer $@",
+    "build-web": "./node_modules/.bin/webpack"
   },
   "repository": {
     "type": "git",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "mocha": "~1.11.0",
     "should": "~1.2.2",
-    "webpack": "^1.7.3"
+    "webpack": "^1.7.3",
+    "superagent": "~1.1.0"
   }
 }

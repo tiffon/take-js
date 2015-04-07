@@ -109,6 +109,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	var tokenType = __webpack_require__(5),
 	    Scanner = __webpack_require__(6);
 
+	var HIGH_INT = Math.pow(2, 30);
+
 
 	function ensureJqApi(elm) {
 	    if (elm instanceof jqProvider) {
@@ -315,7 +317,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	ContextParser.prototype._parse = function _parse() {
 	    var tok,
-	        subCtxEndToken;
+	        endSubTok;
 	    while (true) {
 	        tok = this._nextToken();
 	        if (tok.type === tokenType.QUERY_STATEMENT) {
@@ -336,20 +338,43 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (this._isDone) {
 	            return;
 	        }
-	        if (tok.type !== tokenType.CONTEXT) {
-	            throw new UnexpectedTokenError(tok.type, tokenType.CONTEXT, tok);
+	        if (tok.type !== tokenType.CONTEXT && tok.type !== tokenType.INLINE_SUB_CONTEXT) {
+	            throw new UnexpectedTokenError(
+	                tok.type,
+	                [tokenType.CONTEXT, tokenType.INLINE_SUB_CONTEXT],
+	                tok);
+	        }
+	        if (tok.type === tokenType.INLINE_SUB_CONTEXT) {
+	            endSubTok = this._parseInlineSubContext();
+	            if (!endSubTok) {
+	                // TODO(joe): check to see if i can get rid of this last request for a token
+	                // get the next token, EOF is ok
+	                tok = this._nextToken(true);
+	                if (!tok) {
+	                    return;
+	                }
+	            } else {
+	                // should be a context token (context from the next line)
+	                if (endSubTok.type !== tokenType.CONTEXT) {
+	                    throw new UnexpectedTokenError(endSubTok.type, tokenType.CONTEXT, endSubTok);
+	                }
+	                // should be treated like any other context token, the following conditions will check
+	                // to see if it's a sub-context, the current context or an ancestor context (inline sub
+	                // contexts are a one-off, so the `endSubTok` is from the next line)
+	                tok = endSubTok;
+	            }
 	        }
 	        if (tok.end > this._depth) {
-	            subCtxEndToken = this._parseContext();
-	            if (!subCtxEndToken) {
-	                // `subCtxEndToken` is either the last token parsed in the sub-context or
+	            endSubTok = this._parseContext();
+	            if (!endSubTok) {
+	                // `endSubTok` is either the last token parsed in the sub-context or
 	                // `undefined`, if it's `undefined` then we've reached EOF
 	                return;
 	            }
-	            // If `subCtxEndToken` is defined, then it's a context token. It's possible the
-	            // depth is less than this context's depth, so use `subCtxEndToken` as `tok` to
+	            // If `endSubTok` is defined, then it's a context token. It's possible the
+	            // depth is less than this context's depth, so use `endSubTok` as `tok` to
 	            // see if this context should end.
-	            tok = subCtxEndToken;
+	            tok = endSubTok;
 	            // TODO: consider detecting scenario where entered a sub-context with
 	            // indent+4 but exited that sub-context with indent+2... possibly do not
 	            // allow this type of thing / detect and error
@@ -365,6 +390,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	ContextParser.prototype._parseContext = function _parseContext() {
 	    var subCtx = new ContextParser(this._tok.end, this._tokenGetter[0]),
+	        pair = subCtx.parse(),
+	        subNode = pair[0],
+	        endTok = pair[1];
+	    subCtx.destroy();
+	    this._nodes.push(subNode);
+	    return endTok;
+	};
+
+	ContextParser.prototype._parseInlineSubContext = function _parseInlineSubContext() {
+	    var subCtx = new ContextParser(HIGH_INT, this._tokenGetter[0]),
 	        pair = subCtx.parse(),
 	        subNode = pair[0],
 	        endTok = pair[1];
@@ -450,7 +485,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        throw new UnexpectedTokenError(tok.type, tokenType.DIRECTIVE_IDENTIFIER, tok);
 	    }
 	    ident = tok.content.trim();
-	    if (ident === 'save') {
+	    if (ident === 'save' || ident === ':') {
 	        return this._parseSaveDirective();
 	    } else if (ident === 'save each') {
 	        return this._parseSaveEachDirective();
@@ -670,7 +705,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    ATTR_ACCESSOR: 'TokenType{ AttrAccessor }',
 	    DIRECTIVE_STATEMENT: 'TokenType{ DirectiveStatement }',
 	    DIRECTIVE_IDENTIFIER: 'TokenType{ DirectiveIdentifier }',
-	    DIRECTIVE_BODY_ITEM: 'TokenType{ DirectiveBodyItem }'
+	    DIRECTIVE_BODY_ITEM: 'TokenType{ DirectiveBodyItem }',
+	    INLINE_SUB_CONTEXT: 'TokenType{ InlineSubContext }'
 	});
 
 
@@ -692,11 +728,17 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 	var keywords = Object.freeze({
-	    CSS_START_DELIM: '$',
-	    ACCESSOR_START_DELIM: '|',
+	    CSS_START: '$',
+	    ACCESSOR_START: '|',
 	    ATTR_ACCESSOR_START: '[',
 	    ATTR_ACCESSOR_END: ']',
-	    TEXT_ACCESSOR: 'text'
+	    TEXT_ACCESSOR: 'text',
+	    QUERY_END: ';'
+	});
+
+	var keywordSets = Object.freeze({
+	    QUERY_START: keywords.CSS_START + keywords.ACCESSOR_START,
+	    CSS_QUERY_END: keywords.ACCESSOR_START + keywords.QUERY_END
 	});
 
 
@@ -915,21 +957,35 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	Scanner.prototype._scanStatement = function _scanStatement() {
-	    // var tok;
-	    if (rx.ALPHA.test(this._c)) {
+	    var c = this._c;
+	    if (rx.ALPHA.test(c) || c === ':') {
 	        this._nextScan[0] = this._scanDirective;
 	        return this._makeMarkerToken(tokenType.DIRECTIVE_STATEMENT);
-	    } else {
+
+	    } else if (keywordSets.QUERY_START.indexOf(c) > -1) {
+
 	        this._nextScan[0] = this._scanQuery;
 	        return this._makeMarkerToken(tokenType.QUERY_STATEMENT);
+
+	    } else {
+	        throw new ScanError(
+	            'Invalid statement: ' + JSON.stringify(this._toEolContent),
+	            this._line,
+	            this._lineNum,
+	            this._pos);
 	    }
 	};
 
 	Scanner.prototype._scanDirective = function _scanDirective() {
-	    // accept an alpha
-	    var ok = this._accept(undefined, true),
-	        tok;
-	    if (!ok) {
+	    var tok;
+	    // a directive without any text is an alias to "save"
+	    if (this._accept(':')) {
+	        tok = this._makeToken(tokenType.DIRECTIVE_IDENTIFIER);
+	        this._nextScan[0] = this._scanDirectiveBody;
+	        return tok;
+	    }
+	    // require an alpha to start
+	    if (!this._accept(undefined, true)) {
 	        throw new ScanError(
 	            'Invalid directive, must start with an alpha, not: ' + JSON.stringify(this._c),
 	            this._line,
@@ -970,10 +1026,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	Scanner.prototype._scanQuery = function _scanQuery() {
-	    if (this._c === keywords.CSS_START_DELIM) {
+	    if (this._c === keywords.CSS_START) {
 	        return this._scanCSSSelector();
 	    }
-	    if (this._c === keywords.ACCESSOR_START_DELIM) {
+	    if (this._c === keywords.ACCESSOR_START) {
 	        return this._scanAccessorSequence();
 	    }
 
@@ -986,10 +1042,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	Scanner.prototype._scanCSSSelector = function _scanCSSSelector() {
 	    var tok;
-	    this._acceptRun(keywords.CSS_START_DELIM);
+	    this._accept(keywords.CSS_START);
 	    this._acceptRun(' ');
 	    this._ignore();
-	    if (this._acceptUntil(keywords.ACCESSOR_START_DELIM) < 1) {
+	    // if (this._acceptUntil(keywords.ACCESSOR_START) < 1) {
+	    if (this._acceptUntil(keywordSets.CSS_QUERY_END) < 1) {
 	        throw new ScanError(
 	            'Invalid CSS Selector: ' + JSON.stringify(this._toEolContent),
 	            this._line,
@@ -997,10 +1054,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this._pos);
 	    }
 	    tok = this._makeToken(tokenType.CSS_SELECTOR);
-	    if (this._eol) {
+
+	    if (this._eol || this._c === keywords.QUERY_END) {
 	        this._nextScan[0] = this._endQueryStatement;
-	    } else if (this._c === keywords.ACCESSOR_START_DELIM) {
+
+	    } else if (this._c === keywords.ACCESSOR_START) {
 	        this._nextScan[0] = this._scanAccessorSequence;
+
 	    } else {
 	        throw new ScanError(
 	            'EOL or accessor sequence expected, instead found ' + JSON.stringify(this._toEolContent),
@@ -1012,12 +1072,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	Scanner.prototype._endQueryStatement = function _endQueryStatement() {
-	    return this._makeMarkerToken(tokenType.QUERY_STATEMENT_END);
+	    // return this._makeMarkerToken(tokenType.QUERY_STATEMENT_END);
+	    var tok = this._makeMarkerToken(tokenType.QUERY_STATEMENT_END);
+	    if (this._eol) {
+	        return tok;
+	    } else if (this._c === keywords.QUERY_END) {
+	        this._nextScan[0] = this._scanInlineSubContext;
+	        return tok;
+	    } else {
+	        throw new ScanError(
+	            'Invalid end of query statement ' + JSON.stringify(this._toEolContent),
+	            this._line,
+	            this._lineNum,
+	            this._pos);
+	    }
 	};
 
 	Scanner.prototype._scanAccessorSequence = function _scanAccessorSequence() {
 	    var tok = this._makeMarkerToken(tokenType.ACCESSOR_SEQUENCE);
-	    this._accept(keywords.ACCESSOR_START_DELIM);
+	    this._accept(keywords.ACCESSOR_START);
 	    this._ignore();
 	    this._nextScan[0] = this._scanAccessor;
 	    return tok;
@@ -1031,7 +1104,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        tok;
 	    this._acceptRun(' ');
 	    this._ignore();
-	    if (this._eol) {
+	    if (this._eol || this._c === keywords.QUERY_END) {
 	        // the sequence has ended
 	        return this._endQueryStatement();
 	    }
@@ -1065,6 +1138,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this._line,
 	        this._lineNum,
 	        this._pos);
+	};
+
+	Scanner.prototype._scanInlineSubContext = function _scanInlineSubContext() {
+	    var tok;
+	    this._accept(';');
+	    tok = this._makeToken(tokenType.INLINE_SUB_CONTEXT);
+	    this._acceptRun(' ');
+	    this._ignore();
+	    this._nextScan[0] = this._scanStatement;
+	    return tok;
 	};
 
 
