@@ -49,5 +49,4 @@ Here you can see the full list of changes between each take release.
         - An interesting [blog post](http://showmetheco.de/articles/2012/12/design-by-contract-in-perl.html)
     - Action on failure is configurable (eg skip context, message, error)
     - Message levels for outcomes (e.g. debug, info, warn, error, meltdown)
-    - Message levels for outcomes (e.g. debug, info, warn, error, meltdown)
     - Metadata (failed assertions, etc) attached to the return value?
