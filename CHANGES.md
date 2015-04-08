@@ -6,9 +6,9 @@ Here you can see the full list of changes between each take release.
 
 ## Version 0.1.0
 
-Release pending.
+April 8 2015.
 
-- TODO: Readme update.
+- Readme updated.
 - Inline sub-contexts.
 - `:` alias for `save:`.
 - Tests are run via `npm test`.
