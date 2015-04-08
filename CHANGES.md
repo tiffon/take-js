@@ -21,6 +21,7 @@ Release pending.
 - Created an extremely basic demo page in `./web_dist` run via `npm start`.
 - AUTHORS.md added.
 - CHANGES.md added.
+- TODO.md added.
 
 
 ## Version 0.0.1

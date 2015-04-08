@@ -1,6 +1,6 @@
 A DSL for extracting data from a web page. The DSL serves two purposes: finds elements and extracts their text or attribute values. The main reason for developing this is to have all the CSS selectors for scraping a site in one place (I prefer CSS selectors over anything else).
 
-The DSL wraps [cheerio](https://github.com/cheeriojs/cheerio).
+The DSL wraps [cheerio](http://cheeriojs.github.io/cheerio/#selectors) in node and [jQuery](http://api.jquery.com/category/selectors/) in the browser.
 
 A few links:
 
@@ -67,13 +67,32 @@ The following data will be extracted (presented in JSON format):
 
 Take templates always result in a single JavaScript `Object`.
 
-For a more complex example, see the [reddit sample](https://github.com/tiffon/take-js/blob/master/lib/sample.js).
+The template can also be written in the following, more concise, syntax:
+
+    $ h1 | text ;                   : h1_title
+    $ ul
+        save each                   : uls
+            $ li
+                | 0 [title] ;           : title
+                | 1 text ;              : second_li
+    $ p | 1 text ;                  : p_text
+
+
+For a more complex example, see the [reddit sample](https://github.com/tiffon/take-js/blob/master/sample/reddit.take), which also has a [more concise version](https://github.com/tiffon/take-js/blob/master/sample/reddit_inline_saves.take).
 
 ## Install
+
+### Node
 
 ```SHELL
 npm  install take-dsl
 ```
+
+### Broswer
+
+Include the [web_dist script](https://github.com/tiffon/take-js/blob/master/web_dist/take.js) in your page. If your page has [jQuery](https://jquery.com/) loaded, you should be good to go. See the [web_dist/index.html](https://github.com/tiffon/take-js/blob/master/web_dist/index.html) for a dead-simple demo. It can be served via `npm start`.
+
+
 
 ## Usage
 
@@ -121,6 +140,8 @@ Take templates are whitespace sensitive and are comprised of three types of line
     -   `save each: entries`
     -   `save each: popular.movies`
 
+There are also inline sub-contexts, which are described in the [Inline Sub-Contexts section](#inline-sub-contexts).
+
 ### Queries
 
 
@@ -141,7 +162,7 @@ CSS selector queries start with `$` and end either at the end of the line or at 
 
 In the first example above, the CSS selector query is `#siteTable .thing`. The second is `.domain a`.
 
-The CSS selectors are passed to [cheerio](https://github.com/cheeriojs/cheerio), so anything cheerio can accept can be used. There are a few open [issues](https://github.com/cheeriojs/cheerio/issues) in cheerio. They will come up.
+The CSS selectors are passed to [cheerio](http://cheeriojs.github.io/cheerio/#selectors) in node and [jQuery](http://api.jquery.com/category/selectors/) in the browser (jQuery is an external dependency in the browser distribution). So, anything cheerio or jQuery can accept can be used.
 
 
 #### Non-CSS Selector queries
@@ -233,7 +254,7 @@ Will result in the following `Object`:
 
 ### Save Each Directives
 
-Save each directives produce an `Array` of `Object`s. Generally, these are used for repeating elements on a page. In the [reddit sample](https://github.com/tiffon/take-js/blob/master/lib/sample.js), a save each directive is used to save each of the reddit entries on the reddit homepage.
+Save each directives produce an `Array` of `Object`s. Generally, these are used for repeating elements on a page. In the [reddit sample](https://github.com/tiffon/take-js/blob/master/sample/reddit.take#L3), a save each directive is used to save each of the reddit entries on the reddit homepage.
 
 The syntax is:
 
@@ -275,3 +296,37 @@ Will result in the following `Object`:
     ]
 }
 ```
+
+### Inline Sub Contexts
+
+Very often take templates contain statements like the following:
+
+    $ h1 | text
+        save: section_title
+
+Inline sub-contexts can make statements like these more succinct. Inline sub-contexts allow you to create a sub-context on the same line as a query.
+
+The syntax is:
+
+    query ; sub-context-statement
+
+For example, the template above that saves the `h1` text can be re-written as:
+
+    $ h1 | text ; save: section_title
+
+This can be handy for larger templates. The sample at the beginning of this document becomes:
+
+    $ h1 | text ;                   : h1_title
+    $ ul
+        save each                   : uls
+            $ li
+                | 0 [title] ;           : title
+                | 1 text ;              : second_li
+    $ p | 1 text ;                  : p_text
+
+For additional samples with inline sub-contexts, see the stackoverflow example which scrapes user activity for questions on stackoverflow.com. The example uses the Python package, but the syntax of the templates is identical.
+
+- [Example overview](https://github.com/tiffon/take-examples/tree/master/samples/stackoverflow)
+- [Question listing page](https://github.com/tiffon/take-examples/blob/master/samples/stackoverflow/questions-listing.take)
+- [Question detail page](https://github.com/tiffon/take-examples/blob/master/samples/stackoverflow/question-page.take)
+
