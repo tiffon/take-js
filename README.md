@@ -88,7 +88,7 @@ For a more complex example, see the [reddit sample](https://github.com/tiffon/ta
 npm  install take-dsl
 ```
 
-### Broswer
+### Browser
 
 Include the [web_dist script](https://github.com/tiffon/take-js/blob/master/web_dist/take.js) in your page. If your page has [jQuery](https://jquery.com/) loaded, you should be good to go. See the [web_dist/index.html](https://github.com/tiffon/take-js/blob/master/web_dist/index.html) for a dead-simple demo. It can be served via `npm start`.
 
