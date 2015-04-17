@@ -9,7 +9,7 @@ Here you can see the full list of changes between each take release.
 Unreleased.
 
 - Added the "def" directive to define sub-routines.
-- [ ] Added the "namespace" directive, with "+" alias.
+- Added the "namespace" directive, with "+" alias.
 - [ ] Added the "merge" directive, with alias ">>".
 - [ ] Added the field accessor.
 - [ ] Added the "own_text" accessor.
