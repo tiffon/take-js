@@ -1,44 +1,19 @@
-var cheerio = require('cheerio');
+var fs = require('fs'),
+    cheerio = require('cheerio');
 
 var TakeTemplate = require('../').TakeTemplate,
     errors = require('../lib/errors');
 
-var HTML_FIXTURE = [
-    '<div>',
-    '    <h1 id="id-on-h1">Text in h1</h1>',
-    '    <nav>',
-    '        <ul id="first-ul" title="nav ul title">',
-    '            <li>',
-    '                <a href="/local/a">first nav item</a>',
-    '            </li>',
-    '            <li>',
-    '                <a href="/local/b">second nav item</a>',
-    '            </li>',
-    '        </ul>',
-    '    </nav>',
-    '    <section>',
-    '        <p>some description</p>',
-    '        <ul id="second-ul" title="content ul title">',
-    '            <li>',
-    '                <a href="http://ext.com/a">first content link</a>',
-    '            </li>',
-    '            <li>',
-    '                <a href="http://ext.com/b">second content link</a>',
-    '            </li>',
-    '        </ul>',
-    '    </section>',
-    '</div>',
-].join('\n');
-
-var $DOC = cheerio(HTML_FIXTURE);
+var html_fixture = fs.readFileSync(__dirname + '/doc.html', {encoding: 'utf8'}),
+    $doc = cheerio(html_fixture);
 
 
 describe('TakeTemplate', function() {
 
-    describe('base functionality', function() {
+    describe('basic functionality', function() {
 
 
-        it('compiles a basic template', function() {
+        it('a basic template compiles', function() {
             var tt = new TakeTemplate([
                 '$ h1 | text',
                 '   save: value'
@@ -51,8 +26,8 @@ describe('TakeTemplate', function() {
             var tt = new TakeTemplate([
                     'save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.html().should.eql($DOC.html());
+                data = tt.take(html_fixture);
+            data.value.html().should.eql($doc.html());
         });
 
 
@@ -60,8 +35,8 @@ describe('TakeTemplate', function() {
             var tt = new TakeTemplate([
                     ': value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.html().should.eql($DOC.html());
+                data = tt.take(html_fixture);
+            data.value.html().should.eql($doc.html());
         });
 
 
@@ -69,8 +44,8 @@ describe('TakeTemplate', function() {
             var tt = new TakeTemplate([
                     'save: parent.value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.parent.value.html().should.eql($DOC.html());
+                data = tt.take(html_fixture);
+            data.parent.value.html().should.eql($doc.html());
         });
 
 
@@ -78,8 +53,8 @@ describe('TakeTemplate', function() {
             var tt = new TakeTemplate([
                     ': parent.value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.parent.value.html().should.eql($DOC.html());
+                data = tt.take(html_fixture);
+            data.parent.value.html().should.eql($doc.html());
         });
 
 
@@ -88,18 +63,18 @@ describe('TakeTemplate', function() {
                     '$ h1',
                     '   save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.html().should.eql($DOC.find('h1').html());
+                data = tt.take(html_fixture);
+            data.value.html().should.eql($doc.find('h1').html());
         });
 
 
-        it('saves a css test query', function() {
+        it('saves a css text query', function() {
             var tt = new TakeTemplate([
                     '$ h1 | text',
                     '   save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.should.eql($DOC.find('h1').text());
+                data = tt.take(html_fixture);
+            data.value.should.eql('Text in h1');
         });
 
 
@@ -108,18 +83,8 @@ describe('TakeTemplate', function() {
                     '$ a | 0',
                     '   save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.html().should.eql($DOC.find('a').eq(0).html());
-        });
-
-
-        it('saves a css negative index query', function() {
-            var tt = new TakeTemplate([
-                    '$ a | -1',
-                    '   save: value'
-                ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.html().should.eql($DOC.find('a').eq(-1).html());
+                data = tt.take(html_fixture);
+            data.value.html().should.eql($doc.find('a').eq(0).html());
         });
 
 
@@ -128,8 +93,28 @@ describe('TakeTemplate', function() {
                     '$ a | 0 text',
                     '   save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.should.eql($DOC.find('a').eq(0).text());
+                data = tt.take(html_fixture);
+            data.value.should.eql('first nav item');
+        });
+
+
+        it('saves absent indexes as ""', function() {
+            var tt = new TakeTemplate([
+                    '$ notpresent | 0 text',
+                    '   save: value'
+                ]),
+                data = tt.take(html_fixture);
+            data.value.should.eql('');
+        });
+
+
+        it('saves a css negative index query', function() {
+            var tt = new TakeTemplate([
+                    '$ a | -1',
+                    '   save: value'
+                ]),
+                data = tt.take(html_fixture);
+            data.value.html().should.eql($doc.find('a').eq(-1).html());
         });
 
 
@@ -138,27 +123,17 @@ describe('TakeTemplate', function() {
                     '$ a | -1 text',
                     '   save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.should.eql($DOC.find('a').eq(-1).text());
+                data = tt.take(html_fixture);
+            data.value.should.eql('second content link');
         });
 
 
-        it('saves absent indexes as empty strings', function() {
-            var tt = new TakeTemplate([
-                    '$ notpresent | 0 text',
-                    '   save: value'
-                ]),
-                data = tt.take(HTML_FIXTURE);
-            data.value.should.eql('');
-        });
-
-
-        it('saves absent negative indexes as empty strings', function() {
+        it('saves absent negative indexes as ""', function() {
             var tt = new TakeTemplate([
                     '$ notpresent | -1 text',
                     '   save: value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
+                data = tt.take(html_fixture);
             data.value.should.eql('');
         });
 
@@ -168,7 +143,7 @@ describe('TakeTemplate', function() {
                     '$ h1 | text',
                     '   save: parent.value'
                 ]),
-                data = tt.take(HTML_FIXTURE);
+                data = tt.take(html_fixture);
             data.parent.value.should.eql('Text in h1');
         });
 
@@ -180,8 +155,8 @@ describe('TakeTemplate', function() {
                         '$ h1 | [id]',
                         '   save: value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
-                data.should.eql({value: 'id-on-h1'});
+                    data = tt.take(html_fixture);
+                data.value.should.eql('id-on-h1');
             });
 
             it('saves an absent attribute as `undefined`', function() {
@@ -189,7 +164,7 @@ describe('TakeTemplate', function() {
                         '$ h1 | [mia]',
                         '   save: value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({value: undefined});
             });
         });
@@ -203,8 +178,8 @@ describe('TakeTemplate', function() {
                         '   $ ul | [id]',
                         '      save: value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
-                data.should.eql({value: 'second-ul'});
+                    data = tt.take(html_fixture);
+                data.value.should.eql('second-ul');
             });
 
             it('saves from a sub-context correctly when using the ":" alias', function() {
@@ -213,7 +188,7 @@ describe('TakeTemplate', function() {
                         '   $ ul | [id]',
                         '      : value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({value: 'second-ul'});
             });
 
@@ -223,7 +198,7 @@ describe('TakeTemplate', function() {
                         '   $ ul | 1 [id]',
                         '      save: value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({value: undefined});
             });
 
@@ -233,11 +208,11 @@ describe('TakeTemplate', function() {
                         '   $ ul | 1 [id]',
                         '      : value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({value: undefined});
             });
 
-            it('exists a sub-context correctly', function() {
+            it('exits a sub-context correctly', function() {
                 var tt = new TakeTemplate([
                         '$ nav',
                         '    $ ul | 0 [id]',
@@ -245,14 +220,14 @@ describe('TakeTemplate', function() {
                         '$ p | text',
                         '    save: value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({
                     sub_ctx_value: 'first-ul',
                     value: 'some description'
                 });
             });
 
-            it('exists a sub-context correctly when using the ":" alias', function() {
+            it('exits a sub-context correctly when using the ":" alias', function() {
                 var tt = new TakeTemplate([
                         '$ nav',
                         '    $ ul | 0 [id]',
@@ -260,7 +235,7 @@ describe('TakeTemplate', function() {
                         '$ p | text',
                         '    : value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({
                     sub_ctx_value: 'first-ul',
                     value: 'some description'
@@ -285,7 +260,7 @@ describe('TakeTemplate', function() {
                         '    save: value',
                         '    # should have no effect'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({
                     sub_ctx_value: 'first-ul',
                     value: 'some description'
@@ -297,7 +272,7 @@ describe('TakeTemplate', function() {
                         '$ #id-on-h1 | [id]',
                         '    save: value'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({value: 'id-on-h1'});
             });
         });
@@ -315,7 +290,7 @@ describe('TakeTemplate', function() {
                         '            | text',
                         '                save: text'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({
                     nav: [{
                             url: '/local/a',
@@ -339,7 +314,7 @@ describe('TakeTemplate', function() {
                         '            | text',
                         '                save: item.text'
                     ]),
-                    data = tt.take(HTML_FIXTURE);
+                    data = tt.take(html_fixture);
                 data.should.eql({
                     nav: {
                         items: [{
@@ -358,130 +333,135 @@ describe('TakeTemplate', function() {
                 });
             });
         });
-    });
 
 
-    describe('handles `baseUrl` correctly', function() {
+        describe('handles `baseUrl` correctly', function() {
 
-        // skipped because this functality is specific to PyQuery
-        it.skip('the `TakeTemplate#take()` method handles baseUrl correctly', function() {
-        });
-
-        // skipped because this functality is specific to PyQuery
-        it.skip('the `TakeTemplate()` constructor handles baseUrl correctly', function() {
-        });
-    });
-
-
-    describe('saving via inline sub-contexts', function() {
-
-        it('saves a css query', function() {
-            var tt = new TakeTemplate([
-                    '$ h1 ; save: value'
-                ]),
-                data = tt.take(HTML_FIXTURE),
-                expect = $DOC.find('h1').html();
-            data.value.html().should.eql(expect);
-        });
-
-        it('saves a css query to a nested identifier via the ":" alias', function() {
-            var tt = new TakeTemplate([
-                    '$ h1 ; : parent.value'
-                ]),
-                data = tt.take(HTML_FIXTURE),
-                expect = $DOC.find('h1').html();
-            data.parent.value.html().should.eql(expect);
-        });
-
-        it('saves an index query via the ":" alias identically to a non-inline save', function() {
-            var tt = new TakeTemplate([
-                    '$ a',
-                    '   | 0 ;       : value',
-                    '   | 0',
-                    '       save    : again',
-                ]),
-                data = tt.take(HTML_FIXTURE),
-                expect = $DOC.find('a').eq(0).html();
-            data.value.html().should.eql(expect);
-            data.again.html().should.eql(expect);
-        });
-
-        it('saves an index text query to a nested identifier', function() {
-            var tt = new TakeTemplate([
-                    '$ a | 0 text ; save: parent.value'
-                ]),
-                data = tt.take(HTML_FIXTURE),
-                expect = $DOC.find('a').eq(0).text();
-            data.parent.value.should.eql(expect);
-        });
-
-        it('saves an attribute query without disturbing surounding contexts', function() {
-            var tt = new TakeTemplate([
-                    '$ ul | 0',
-                    '   | [title]',
-                    '       save: title_value',
-                    '   | [id] ; : id_value',
-                    '$ p | text',
-                    '    : p_value'
-                ]),
-                data = tt.take(HTML_FIXTURE);
-            data.should.eql({
-                id_value: 'first-ul',
-                title_value: 'nav ul title',
-                p_value: 'some description'
+            // skipped because this functality is specific to PyQuery
+            it.skip('the `TakeTemplate#take()` method handles baseUrl correctly', function() {
             });
 
-        });
-    });
-
-
-    describe('throws under the right circumstances', function() {
-
-        it('invalid directive statements cause a ScanError', function() {
-            (function() {
-                var tt = new TakeTemplate([
-                    '$ h1 | [href]',
-                    '    save fail'
-                ]);
-            }).should.throw(errors.ScanError);
+            // skipped because this functality is specific to PyQuery
+            it.skip('the `TakeTemplate()` constructor handles baseUrl correctly', function() {
+            });
         });
 
-        it('invalid directive IDs cause an InvalidDirectiveError', function() {
-            (function() {
-                var tt = new TakeTemplate([
-                    '$ h1 | [href]',
-                    '    hm: fail'
-                ]);
-            }).should.throw(errors.InvalidDirectiveError);
+
+        describe('throws under the right circumstances', function() {
+
+            it('invalid directive statements cause a ScanError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '$ h1 | [href]',
+                        '    save fail'
+                    ]);
+                }).should.throw(errors.InvalidDirectiveError);
+            });
+
+            it('invalid directive IDs cause an InvalidDirectiveError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '$ h1 | [href]',
+                        '    hm: fail'
+                    ]);
+                }).should.throw(errors.InvalidDirectiveError);
+            });
+
+            it('invalid queries cause an InvalidDirectiveError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '.h1 | [href]',
+                        '    hm: fail'
+                    ]);
+                }).should.throw(errors.InvalidDirectiveError);
+            });
+
+            it('invalid accessor sequences cause an UnexpectedTokenError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '$ h1 | [href] text',
+                        '    save: fail'
+                    ]);
+                }).should.throw(errors.UnexpectedTokenError);
+            });
+
+            it('a `save each` directive without a sub-context causes a TakeSyntaxError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '$ li',
+                        '    save each: items',
+                        '    $ h1 | text',
+                        '       save: fail'
+                    ]);
+                }).should.throw(errors.TakeSyntaxError);
+            });
         });
 
-        it('invalid queries cause a ScanError', function() {
-            (function() {
+
+        describe('saving via inline sub-contexts', function() {
+
+            it('saves a css query', function() {
                 var tt = new TakeTemplate([
-                    '. h1 | [href]',
-                    '    hm: fail'
-                ]);
-            }).should.throw(errors.ScanError);
+                        '$ h1 | 0 text ; save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('Text in h1');
+            });
+
+            it('saves a css query to a nested id via the ":" alias', function() {
+                var tt = new TakeTemplate([
+                        '$ h1 | 0 text ; : parent.value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.parent.value.should.eql('Text in h1');
+            });
+
+            it('saves an accessor query in a sub-context', function() {
+                var tt = new TakeTemplate([
+                        '$ h1',
+                        '   | 0 text ;  : value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('Text in h1');
+            });
+
+            it('saves from multiple inline sub-contexts', function() {
+                var tt = new TakeTemplate([
+                        '$ h1 ; | 0 ; | text ; : value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('Text in h1');
+            });
+
+            it('saves from sub-context of an inline sub-context', function() {
+                var tt = new TakeTemplate([
+                        '$ h1 ; | 0 ; | text',
+                        '    : value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('Text in h1');
+            });
+
+            it('exits a sub-context of an inline sub-context correctly', function() {
+                var tt = new TakeTemplate([
+                        '$ h1 ; | 0 ; | text',
+                        '    : h1_value',
+                        '$ p | text',
+                        '    : p_value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.should.eql({
+                    h1_value: 'Text in h1',
+                    p_value: 'some description'
+                });
+
+            });
         });
 
-        it('invalid accessor sequences cause an UnexpectedTokenError', function() {
-            (function() {
-                var tt = new TakeTemplate([
-                    '$ h1 | [href] text',
-                    '    save: fail'
-                ]);
-            }).should.throw(errors.UnexpectedTokenError);
-        });
 
-        it('a `save each` directive without a sub-context causes a TakeSyntaxError', function() {
-            (function() {
-                var tt = new TakeTemplate([
-                    '$ li',
-                    '    save each: items',
-                    '    $ h1 | text',
-                    '       save: fail'
-                ]);
-            }).should.throw(errors.TakeSyntaxError);
+        describe('field accessor', function() {
+            it.skip('TODO: field accessor tests', function() {
+            });
         });
     });
 });
