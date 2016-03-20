@@ -1,8 +1,8 @@
 var fs = require('fs'),
     cheerio = require('cheerio');
 
-var TakeTemplate = require('../').TakeTemplate,
-    errors = require('../lib/errors');
+var TakeTemplate = require('../lib').TakeTemplate,
+    InvalidDirectiveError = require('../lib/errors/InvalidDirectiveError');
 
 var html_fixture = fs.readFileSync(__dirname + '/doc.html', {encoding: 'utf8'}),
     $doc = cheerio(html_fixture);
@@ -107,7 +107,7 @@ describe('directives', function() {
                         '           save: saved',
                         'simple ; save: should_error'
                     ]);
-            }).should.throw(errors.InvalidDirectiveError);
+            }).should.throw(InvalidDirectiveError);
         });
 
 
@@ -149,6 +149,17 @@ describe('directives', function() {
                 ]),
                 data = tt.take(html_fixture);
             data.parent.value.should.eql('Text in h1');
+        });
+
+
+        it('nest', function() {
+            var tt = new TakeTemplate([
+                    'namespace               : top',
+                    '    namespace               : middle',
+                    '        $ h1 | 0 text ;         : value'
+                ]),
+                data = tt.take(html_fixture);
+            data.top.middle.value.should.eql('Text in h1');
         });
 
 

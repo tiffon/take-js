@@ -1,8 +1,11 @@
 var fs = require('fs'),
     cheerio = require('cheerio');
 
-var TakeTemplate = require('../').TakeTemplate,
-    errors = require('../lib/errors');
+var TakeTemplate = require('../lib').TakeTemplate,
+    InvalidDirectiveError = require('../lib/errors/InvalidDirectiveError'),
+    ScanError = require('../lib/errors/ScanError'),
+    UnexpectedTokenError = require('../lib/errors/UnexpectedTokenError'),
+    TakeSyntaxError = require('../lib/errors/TakeSyntaxError');
 
 var html_fixture = fs.readFileSync(__dirname + '/doc.html', {encoding: 'utf8'}),
     $doc = cheerio(html_fixture);
@@ -13,138 +16,152 @@ describe('TakeTemplate', function() {
     describe('basic functionality', function() {
 
 
-        it('a basic template compiles', function() {
-            var tt = new TakeTemplate([
-                '$ h1 | text',
-                '   save: value'
-            ]);
-            tt.should.be.instanceOf(TakeTemplate);
-        });
+        describe('compilation', function() {
 
-
-        it('saves', function() {
-            var tt = new TakeTemplate([
-                    'save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.html().should.eql($doc.html());
-        });
-
-
-        it('saves with ":" alias', function() {
-            var tt = new TakeTemplate([
-                    ': value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.html().should.eql($doc.html());
-        });
-
-
-        it('saves nested identifiers', function() {
-            var tt = new TakeTemplate([
-                    'save: parent.value'
-                ]),
-                data = tt.take(html_fixture);
-            data.parent.value.html().should.eql($doc.html());
-        });
-
-
-        it('saves nested identifiers with the ":" alias', function() {
-            var tt = new TakeTemplate([
-                    ': parent.value'
-                ]),
-                data = tt.take(html_fixture);
-            data.parent.value.html().should.eql($doc.html());
-        });
-
-
-        it('saves a css query', function() {
-            var tt = new TakeTemplate([
-                    '$ h1',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.html().should.eql($doc.find('h1').html());
-        });
-
-
-        it('saves a css text query', function() {
-            var tt = new TakeTemplate([
+            it('a valid Array of strings compiles', function() {
+                var tt = new TakeTemplate([
                     '$ h1 | text',
                     '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.should.eql('Text in h1');
+                ]);
+                tt.should.be.instanceOf(TakeTemplate);
+            });
+
+            it('a valid multiline string compiles', function() {
+                var tt = new TakeTemplate(`
+                    $ h1 | text
+                        save: value
+                `);
+                tt.should.be.instanceOf(TakeTemplate);
+            });
         });
 
 
-        it('saves a css index query', function() {
-            var tt = new TakeTemplate([
-                    '$ a | 0',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.html().should.eql($doc.find('a').eq(0).html());
-        });
+        describe('saves', function() {
+
+            it('saves the default context', function() {
+                var tt = new TakeTemplate([
+                        'save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.html().should.eql($doc.html());
+            });
 
 
-        it('saves a css index text query', function() {
-            var tt = new TakeTemplate([
-                    '$ a | 0 text',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.should.eql('first nav item');
-        });
+            it('saves with ":" alias', function() {
+                var tt = new TakeTemplate([
+                        ': value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.html().should.eql($doc.html());
+            });
 
 
-        it('saves absent indexes as ""', function() {
-            var tt = new TakeTemplate([
-                    '$ notpresent | 0 text',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.should.eql('');
-        });
+            it('saves nested identifiers', function() {
+                var tt = new TakeTemplate([
+                        'save: parent.value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.parent.value.html().should.eql($doc.html());
+            });
 
 
-        it('saves a css negative index query', function() {
-            var tt = new TakeTemplate([
-                    '$ a | -1',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.html().should.eql($doc.find('a').eq(-1).html());
-        });
+            it('saves nested identifiers with the ":" alias', function() {
+                var tt = new TakeTemplate([
+                        ': parent.value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.parent.value.html().should.eql($doc.html());
+            });
 
 
-        it('saves a css negative index text query', function() {
-            var tt = new TakeTemplate([
-                    '$ a | -1 text',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.should.eql('second content link');
-        });
+            it('saves a css query', function() {
+                var tt = new TakeTemplate([
+                        '$ h1',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.html().should.eql($doc.find('h1').html());
+            });
 
 
-        it('saves absent negative indexes as ""', function() {
-            var tt = new TakeTemplate([
-                    '$ notpresent | -1 text',
-                    '   save: value'
-                ]),
-                data = tt.take(html_fixture);
-            data.value.should.eql('');
-        });
+            it('saves a css text query', function() {
+                var tt = new TakeTemplate([
+                        '$ h1 | text',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('Text in h1');
+            });
 
 
-        it('saves a query to a nested identifier', function() {
-            var tt = new TakeTemplate([
-                    '$ h1 | text',
-                    '   save: parent.value'
-                ]),
-                data = tt.take(html_fixture);
-            data.parent.value.should.eql('Text in h1');
+            it('saves a css index query', function() {
+                var tt = new TakeTemplate([
+                        '$ a | 0',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.html().should.eql($doc.find('a').eq(0).html());
+            });
+
+
+            it('saves a css index text query', function() {
+                var tt = new TakeTemplate([
+                        '$ a | 0 text',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('first nav item');
+            });
+
+
+            it('saves absent indexes as ""', function() {
+                var tt = new TakeTemplate([
+                        '$ notpresent | 0 text',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('');
+            });
+
+
+            it('saves a css negative index query', function() {
+                var tt = new TakeTemplate([
+                        '$ a | -1',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.html().should.eql($doc.find('a').eq(-1).html());
+            });
+
+
+            it('saves a css negative index text query', function() {
+                var tt = new TakeTemplate([
+                        '$ a | -1 text',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('second content link');
+            });
+
+
+            it('saves absent negative indexes as ""', function() {
+                var tt = new TakeTemplate([
+                        '$ notpresent | -1 text',
+                        '   save: value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.value.should.eql('');
+            });
+
+
+            it('saves a query to a nested identifier', function() {
+                var tt = new TakeTemplate([
+                        '$ h1 | text',
+                        '   save: parent.value'
+                    ]),
+                    data = tt.take(html_fixture);
+                data.parent.value.should.eql('Text in h1');
+            });
         });
 
 
@@ -349,13 +366,29 @@ describe('TakeTemplate', function() {
 
         describe('throws under the right circumstances', function() {
 
-            it('invalid directive statements cause a ScanError', function() {
+            it('invalid accessors cause a ScanError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '|$'
+                    ]);
+                }).should.throw(ScanError);
+            });
+
+            it('invalid css queries cause a ScanError', function() {
+                (function() {
+                    var tt = new TakeTemplate([
+                        '$;'
+                    ]);
+                }).should.throw(ScanError);
+            });
+
+            it('invalid directive statements cause a UnexpectedTokenError', function() {
                 (function() {
                     var tt = new TakeTemplate([
                         '$ h1 | [href]',
-                        '    save fail'
+                        '    save: '
                     ]);
-                }).should.throw(errors.InvalidDirectiveError);
+                }).should.throw(UnexpectedTokenError);
             });
 
             it('invalid directive IDs cause an InvalidDirectiveError', function() {
@@ -364,7 +397,7 @@ describe('TakeTemplate', function() {
                         '$ h1 | [href]',
                         '    hm: fail'
                     ]);
-                }).should.throw(errors.InvalidDirectiveError);
+                }).should.throw(InvalidDirectiveError);
             });
 
             it('invalid queries cause an InvalidDirectiveError', function() {
@@ -373,7 +406,7 @@ describe('TakeTemplate', function() {
                         '.h1 | [href]',
                         '    hm: fail'
                     ]);
-                }).should.throw(errors.InvalidDirectiveError);
+                }).should.throw(InvalidDirectiveError);
             });
 
             it('invalid accessor sequences cause an UnexpectedTokenError', function() {
@@ -382,7 +415,7 @@ describe('TakeTemplate', function() {
                         '$ h1 | [href] text',
                         '    save: fail'
                     ]);
-                }).should.throw(errors.UnexpectedTokenError);
+                }).should.throw(UnexpectedTokenError);
             });
 
             it('a `save each` directive without a sub-context causes a TakeSyntaxError', function() {
@@ -393,7 +426,7 @@ describe('TakeTemplate', function() {
                         '    $ h1 | text',
                         '       save: fail'
                     ]);
-                }).should.throw(errors.TakeSyntaxError);
+                }).should.throw(TakeSyntaxError);
             });
         });
 

@@ -1,4 +1,3 @@
-'use strict';
 
 // weak test for a browser environment
 if (typeof window !== 'undefined') {
