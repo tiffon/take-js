@@ -1,6 +1,6 @@
 
 import UnexpectedTokenError from '../errors/UnexpectedTokenError';
-import Scanner from '../scanner';
+import Scanner from '../Scanner';
 import TokenType from '../TokenType';
 import ContextParser from './ContextParser';
 

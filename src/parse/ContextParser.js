@@ -38,6 +38,10 @@ export default class ContextParser {
         return this._depth;
     }
 
+    getTok(): ?Token {
+        return this._tok;
+    }
+
     destroy() {
         // this._depth = undefined;
         // this._tokenGetter = undefined;

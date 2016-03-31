@@ -90,11 +90,12 @@ function accessorSeq(parser: ContextParser): Array<Function> {
 
 
 function cssSelector(parser: ContextParser): Array<Function> {
-    if (!parser._tok) {
+    const selectorTok = parser.getTok();
+    if (!selectorTok) {
         throw new TakeSyntaxError(`Expected to find a token, instead found EOF`);
     }
     const
-        selector = parser._tok.content.trim(),
+        selector = selectorTok.content.trim(),
         query = makeCssQuery(selector),
         tok = parser.nextToken();
     if (!tok) {
