@@ -21,6 +21,7 @@ function UnexpectedTokenError(found, expected, token, message) {
     this.message = message;
     this.stack = Error.call(this, '' + this).stack;
 }
+
 (0, _utils2.configErrorProto)(UnexpectedTokenError, 'UnexpectedTokenError');
 
 UnexpectedTokenError.prototype.toString = function toString(offset) {

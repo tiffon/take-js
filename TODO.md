@@ -2,6 +2,8 @@
 
 Here you can see the full list of changes between each take release.
 
+### Very Important
+- Regain parity with [python version](github.com/tiffon/take) feature-set (match master)
 
 ### Quality of life
 

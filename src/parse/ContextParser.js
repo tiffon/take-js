@@ -12,6 +12,7 @@ import type { ParseResult } from './ParseResult';
 
 
 export default class ContextParser {
+
     _depth: number;
     _tokenGetter: [Function];
     _defs: Object;
@@ -20,7 +21,7 @@ export default class ContextParser {
     _tok: ?Token;
     _isDone: boolean;
 
-    constructor(depth: number, getToken: Function, defs: Object, fromInline?: boolean) {
+    constructor(depth: number, getToken: Function, defs: bject, fromInline?: boolean) {
         this._depth = depth;
         this._tokenGetter = [getToken];
         this._defs = defs || {};
@@ -43,12 +44,10 @@ export default class ContextParser {
     }
 
     destroy() {
-        // this._depth = undefined;
-        // this._tokenGetter = undefined;
-        // this._defs = undefined;
-        // this._nodes = undefined;
-        // this._tok = undefined;
-        // this._isDone = undefined;
+        this._tokenGetter = [];
+        this._defs = {};
+        this._nodes = [];
+        this._tok = undefined;
     }
 
     parse(): ParseResult {
@@ -70,7 +69,6 @@ export default class ContextParser {
                 throw new Error('Invalid state: this._tok cannot be null when spawing ContextParser without a provided depth');
             }
             depth = this._tok.end;
-
         }
         // TODO: prototype chain for defs
         return new ContextParser(depth, this._tokenGetter[0], defs, fromInline);
