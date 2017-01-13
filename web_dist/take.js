@@ -54,16 +54,24 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	exports.TakeTemplate = __webpack_require__(1).TakeTemplate;
+	__webpack_require__(1);
+	(function webpackMissingModule() { throw new Error("Cannot find module \"umd/take.js\""); }());
 
 
 /***/ },
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
+	exports.TakeTemplate = __webpack_require__(2).TakeTemplate;
 
-	var jqProvider = __webpack_require__(2),
-	    parse = __webpack_require__(3).parse;
+
+/***/ },
+/* 2 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	var jqProvider = __webpack_require__(3),
+	    parse = __webpack_require__(4).parse;
 
 
 	function TakeTemplate(lines) {
@@ -80,10 +88,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 2 */
+/* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
-
+	
 	// weak test for a browser environment
 	if (typeof window !== 'undefined') {
 	    // use jQuery
@@ -95,87 +103,21 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 3 */
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
+	
+	// var jqProvider = require('./jq-provider');
 
-	var jqProvider = __webpack_require__(2);
-
-	var errors = __webpack_require__(4),
+	var errors = __webpack_require__(5),
 	    UnexpectedTokenError = errors.UnexpectedTokenError,
 	    InvalidDirectiveError = errors.InvalidDirectiveError,
 	    TakeSyntaxError = errors.TakeSyntaxError;
 
-	var tokenType = __webpack_require__(5),
-	    Scanner = __webpack_require__(6);
-
-	var HIGH_INT = Math.pow(2, 30);
-
-
-	function ensureJqApi(elm) {
-	    if (elm instanceof jqProvider) {
-	        return elm;
-	    }
-	    return jqProvider(elm);
-	}
-
-	function makeCssQuery(selector) {
-	    return function cssQuery(elm) {
-	        return ensureJqApi(elm).find(selector);
-	    };
-	}
-
-	function makeIndexQuery(indexStr) {
-	    var int = parseInt(indexStr, 10);
-	    return function indexQuery(elm) {
-	        return ensureJqApi(elm).eq(int);
-	    };
-	}
-
-	function makeTextQuery() {
-	    return function textQuery(elm) {
-	        return ensureJqApi(elm).text();
-	    };
-	}
-
-	function makeAttrQuery(attr) {
-	    return function attrQuery(elm) {
-	        return ensureJqApi(elm).attr(attr);
-	    };
-	}
-
-	function parseSaveToID(tok) {
-	    if (tok.type !== tokenType.DIRECTIVE_BODY_ITEM) {
-	        throw new UnexpectedTokenError(
-	            tok.type,
-	            tokenType.DIRECTIVE_BODY_ITEM,
-	            tok,
-	            'Invalid save ID');
-	    }
-	    return tok.content.trim().split('.');
-	}
-
-	// Util to save some name sequence to an object. For instance, `['location', 'query']`
-	// will save `value` to dest['location']['query'].
-	function saveTo(dest, nameParts, value) {
-	    var max = nameParts.length - 1,
-	        i = 0,
-	        part;
-	    if (!max) {
-	        dest[nameParts[0]] = value;
-	    } else {
-	        for (; i < max; i++) {
-	            part = nameParts[i];
-	            if (part in dest) {
-	                dest = dest[part];
-	            } else {
-	                dest = dest[part] = {};
-	            }
-	        }
-	        part = nameParts[i];
-	        dest[part] = value;
-	    }
-	}
+	var tokenType = __webpack_require__(6),
+	    Scanner = __webpack_require__(7),
+	    parseQuery = __webpack_require__(8).parse,
+	    directives = __webpack_require__(9);
 
 
 	function ContextNode(depth, nodes) {
@@ -205,90 +147,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this._rv = rv != null ? rv : context.rv;
 	    // value in a sub-context is derived from the parent context's lastValue
 	    this._value = value != null ? value : context.lastValue;
-	    if (lastValue != null) {
-	        this.lastValue = lastValue;
-	    } else if (value != null) {
-	        this.lastValue = value;
-	    } else if (context != null) {
-	        if (context.lastValue != null) {
-	            this.lastValue = context.lastValue;
-	        } else if (context.value != null) {
-	            this.lastValue = context.value;
-	        } else {
-	            this.lastValue = undefined;
-	        }
-	    } else {
-	        this.lastValue = undefined;
-	    }
+	    this.lastValue = lastValue != null ? lastValue : this._value;
 	    for (; i < len; i++) {
 	        this._nodes[i].exec(this);
 	    }
 	};
 
 
-	function QueryNode(queries) {
-	    this._queries = queries;
-	}
-
-	QueryNode.prototype.exec = function exec(context) {
-	    var val = context.value,
-	        len = this._queries.length,
-	        i = 0;
-	    for (; i < len; i++) {
-	        val = this._queries[i](val);
-	    }
-	    context.lastValue = val;
-	};
-
-
-	function SaveNode(nameParts) {
-	    this._nameParts = nameParts;
-	}
-
-	SaveNode.prototype.exec = function exec(context) {
-	    saveTo(context.rv, this._nameParts, context.value);
-	};
-
-
-	function SaveEachNode(nameParts, subContextNode) {
-	    this._nameParts = nameParts;
-	    this._subContext = subContextNode;
-	}
-
-	SaveEachNode.prototype.exec = function exec(context) {
-	    var items = context.value,
-	        results = [],
-	        i = 0,
-	        subCtx,
-	        len,
-	        item,
-	        rv;
-	    saveTo(context.rv, this._nameParts, results);
-	    if (items == null || !items.length) {
-	        return;
-	    }
-	    subCtx = this._subContext;
-	    len = items.length;
-	    for (; i < len; i++) {
-	        item = items[i];
-	        rv = {};
-	        results.push(rv);
-	        subCtx.exec(undefined, rv, item, item);
-	    }
-	};
-
-
-	function ContextParser(depth, getToken) {
+	function ContextParser(depth, getToken, defs, fromInline) {
 	    this._depth = depth;
 	    this._tokenGetter = [getToken];
+	    this._defs = defs || {};
+	    this._fromInline = fromInline;
 	    this._nodes = undefined;
 	    this._tok = undefined;
 	    this._isDone = false;
 	}
 
+	Object.defineProperties(ContextParser.prototype, {
+	    defs: {
+	        get: function() {
+	            return this._defs;
+	        }
+	    },
+	    depth: {
+	        get: function() {
+	            return this._depth;
+	        }
+	    }
+	});
+
 	ContextParser.prototype.destroy = function destroy() {
 	    this._depth = undefined;
 	    this._tokenGetter = undefined;
+	    this._defs = undefined;
 	    this._nodes = undefined;
 	    this._tok = undefined;
 	    this._isDone = undefined;
@@ -301,10 +193,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    this._nodes = [];
 	    tok = this._parse();
-	    return [new ContextNode(this._depth, this._nodes), tok];
+	    return {
+	        node: new ContextNode(this._depth, this._nodes),
+	        endTok: tok
+	    };
 	};
 
-	ContextParser.prototype._nextToken = function _nextToken(acceptEOF) {
+	ContextParser.prototype.spawnContextParser = function spawnContextParser(depth, fromInline) {
+	    var defs = Object.create(this._defs);
+	    if (depth == null) {
+	        depth = this._tok.end;
+	    }
+	    // TODO: prototype chain for defs
+	    return new ContextParser(depth, this._tokenGetter[0], defs, fromInline);
+	};
+
+	ContextParser.prototype.nextToken = function nextToken(acceptEOF) {
 	    this._tok = this._tokenGetter[0]();
 	    if (!this._tok) {
 	        this._isDone = true;
@@ -319,7 +223,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var tok,
 	        endSubTok;
 	    while (true) {
-	        tok = this._nextToken();
+	        tok = this.nextToken();
 	        if (tok.type === tokenType.QUERY_STATEMENT) {
 	            this._parseQuery();
 	            tok = undefined;
@@ -333,7 +237,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        if (!tok) {
 	            // get the next token, EOF is ok
-	            tok = this._nextToken(true);
+	            tok = this.nextToken(true);
 	        }
 	        if (this._isDone) {
 	            return;
@@ -349,7 +253,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            if (!endSubTok) {
 	                // TODO(joe): check to see if i can get rid of this last request for a token
 	                // get the next token, EOF is ok
-	                tok = this._nextToken(true);
+	                tok = this.nextToken(true);
 	                if (!tok) {
 	                    return;
 	                }
@@ -385,49 +289,38 @@ return /******/ (function(modules) { // webpackBootstrap
 	            return tok;
 	        }
 	        // context token has the same depth, so continue this parse loop
+	        // exit if the current context parser was created from an inline
+	        // context - they only persist if the context is deeper
+	        if (this._fromInline) {
+	            return tok;
+	        }
 	    }
 	};
 
 	ContextParser.prototype._parseContext = function _parseContext() {
-	    var subCtx = new ContextParser(this._tok.end, this._tokenGetter[0]),
-	        pair = subCtx.parse(),
-	        subNode = pair[0],
-	        endTok = pair[1];
+	    var subCtx = this.spawnContextParser(),
+	        result = subCtx.parse();
 	    subCtx.destroy();
-	    this._nodes.push(subNode);
-	    return endTok;
+	    this._nodes.push(result.node);
+	    return result.endTok;
 	};
 
 	ContextParser.prototype._parseInlineSubContext = function _parseInlineSubContext() {
-	    var subCtx = new ContextParser(HIGH_INT, this._tokenGetter[0]),
-	        pair = subCtx.parse(),
-	        subNode = pair[0],
-	        endTok = pair[1];
+	    var subCtx = this.spawnContextParser(this._depth, true),
+	        result = subCtx.parse();
 	    subCtx.destroy();
-	    this._nodes.push(subNode);
-	    return endTok;
+	    this._nodes.push(result.node);
+	    return result.endTok;
 	};
 
 	ContextParser.prototype._parseQuery = function _parseQuery() {
-	    var tok = this._nextToken(),
-	        queries;
-	    if (tok.type === tokenType.CSS_SELECTOR) {
-	        queries = this._parseCssSelector();
-	    } else if (tok.type === tokenType.ACCESSOR_SEQUENCE) {
-	        queries = this._parseAccessorSeq();
-	    } else {
-	        throw new UnexpectedTokenError(
-	            tok.type,
-	            [tokenType.CSS_SELECTOR, tokenType.ACCESSOR_SEQUENCE],
-	            tok);
-	    }
-	    this._nodes.push(new QueryNode(queries));
+	    this._nodes.push(parseQuery(this));
 	};
 
 	ContextParser.prototype._parseCssSelector = function _parseCssSelector() {
 	    var selector = this._tok.content.trim(),
 	        query = makeCssQuery(selector),
-	        tok = this._nextToken();
+	        tok = this.nextToken();
 	    if (tok.type === tokenType.QUERY_STATEMENT_END) {
 	        return [query];
 	    } else if (tok.type === tokenType.ACCESSOR_SEQUENCE) {
@@ -442,12 +335,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	ContextParser.prototype._parseAccessorSeq = function _parseAccessorSeq() {
 	    var queries = [],
-	        tok = this._nextToken(),
+	        tok = this.nextToken(),
 	        attr,
 	        expected;
 	    if (tok.type === tokenType.INDEX_ACCESSOR) {
 	        queries.push(makeIndexQuery(tok.content));
-	        tok = this._nextToken();
+	        tok = this.nextToken();
 	        // index accessor might be the only accessor
 	        if (tok.type === tokenType.QUERY_STATEMENT_END) {
 	            return queries;
@@ -470,7 +363,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        throw new UnexpectedTokenError(tok.type, expected, tok);
 	    }
-	    tok = this._nextToken();
+	    tok = this.nextToken();
 	    if (tok.type !== tokenType.QUERY_STATEMENT_END) {
 	        throw new UnexpectedTokenError(tok.type, tokenType.QUERY_STATEMENT_END, tok);
 	    }
@@ -479,107 +372,68 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// directives return their last token because they can parse sub-contexts
 	ContextParser.prototype._parseDirective = function _parseDirective() {
-	    var tok = this._nextToken(),
-	        ident;
+	    var tok = this.nextToken(),
+	        ident,
+	        defNode,
+	        result;
 	    if (tok.type !== tokenType.DIRECTIVE_IDENTIFIER) {
 	        throw new UnexpectedTokenError(tok.type, tokenType.DIRECTIVE_IDENTIFIER, tok);
 	    }
 	    ident = tok.content.trim();
-	    if (ident === 'save' || ident === ':') {
-	        return this._parseSaveDirective();
-	    } else if (ident === 'save each') {
-	        return this._parseSaveEachDirective();
+	    if (directives[ident]) {
+	        result = directives[ident](this);
+	        if (result.node) {
+	            // `result.node` is undefined for `def` directives bc they add the node to `this.defs` instead
+	            this._nodes.push(result.node);
+	        }
+	        return result.endTok;
+	    } else if (this._defs[ident]) {
+	        this._parseCallUserDirective(this._defs[ident]);
 	    } else {
 	        throw new InvalidDirectiveError(
 	            ident,
-	            'Expecting either "save" or "save each" directive".',
+	            'Unknown directive: ' + JSON.stringify(ident),
 	            tok);
 	    }
 	};
 
-	ContextParser.prototype._parseSaveDirective = function _parseSaveDirective() {
-	    var tok = this._nextToken(),
-	        nameParts = parseSaveToID(tok),
-	        node = new SaveNode(nameParts);
-	    this._nodes.push(node);
+	ContextParser.prototype._parseCallUserDirective = function _parseCallUserDirective(defNode) {
+	    var tok = this.nextToken();
+	    if (tok.type !== tokenType.DIRECTIVE_STATEMENT_END) {
+	        throw new UnexpectedTokenError(tok.type, tokenType.DIRECTIVE_STATEMENT_END, tok);
+	    }
+	    this._nodes.push(defNode);
 	};
 
-	ContextParser.prototype._parseSaveEachDirective = function _parseSaveEachDirective() {
-	    var tok = this._nextToken(),
-	        nameParts = parseSaveToID(tok),
-	        subCtx,
-	        pair,
-	        subCtxNode,
-	        lastTok,
-	        node;
-	    tok = this._nextToken();
-	    if (tok.type !== tokenType.CONTEXT) {
-	        throw new UnexpectedTokenError(tok.type, tokenType.CONTEXT, tok);
-	    }
-	    if (tok.end <= this._depth) {
-	        throw new TakeSyntaxError('Invalid depth, expecting to start a "save each" context.', tok);
-	    }
-	    subCtx = new ContextParser(tok.end, this._tokenGetter[0]);
-	    pair = subCtx.parse();
-	    subCtxNode = pair[0];
-	    lastTok = pair[1];
-	    subCtx.destroy();
-	    node = new SaveEachNode(nameParts, subCtxNode);
-	    this._nodes.push(node);
-	    return lastTok;
-	};
+
 
 
 	function parse(lines) {
 	    var scanner = new Scanner(lines),
 	        tok = scanner.getToken(),
 	        ctx,
-	        pair,
-	        node,
-	        lastTok;
+	        result;
 	    if (tok.type !== tokenType.CONTEXT) {
 	        throw new UnexpectedTokenError(tok.type, tokenType.CONTEXT, 'Leading context token not found.');
 	    }
 	    ctx = new ContextParser(tok.end, scanner.getToken.bind(scanner));
-	    pair = ctx.parse();
-	    node = pair[0];
-	    lastTok = pair[1];
+	    result = ctx.parse();
 	    ctx.destroy();
-	    if (lastTok) {
+	    if (result.endTok) {
 	        throw new UnexpectedTokenError(tok, 'EOF');
 	    }
-	    return node;
+	    return result.node;
 	}
 
 	exports.parse = parse;
 
 
 /***/ },
-/* 4 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
-
-	// util for adding padding (spaces) to a string
-	var spaces = (function() {
-	    var base = '                                                            ',
-	        baseLen = base.length;
-
-	    function spaces(len) {
-	        var rv;
-	        if (len < 1) {
-	            return '';
-	        }
-	        if (len <= baseLen) {
-	            return base.slice(-len);
-	        }
-	        rv = base + base;
-	        while (rv.length < len) {
-	            rv += base;
-	        }
-	        return rv.slice(-len);
-	    }
-	    return spaces;
-	})();
+	
+	var spaces = __webpack_require__(10).charRepeater(' ');
 
 
 	function ScanError(message, line, lineNum, pos, extra) {
@@ -690,10 +544,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
-
+	
 	module.exports = Object.freeze({
 	    CONTEXT: 'TokenType{ Context }',
 	    QUERY_STATEMENT: 'TokenType{ QueryStatement }',
@@ -702,8 +556,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    ACCESSOR_SEQUENCE: 'TokenType{ AccessorSequence }',
 	    INDEX_ACCESSOR: 'TokenType{ IndexAccessor }',
 	    TEXT_ACCESSOR: 'TokenType{ TextAccessor }',
+	    OWN_TEXT_ACCESSOR: 'TokenType{ OwnTextAccessor }',
 	    ATTR_ACCESSOR: 'TokenType{ AttrAccessor }',
+	    FIELD_ACCESSOR: 'TokenType{ FieldAccessor }',
 	    DIRECTIVE_STATEMENT: 'TokenType{ DirectiveStatement }',
+	    DIRECTIVE_STATEMENT_END: 'TokenType{ DirectiveStatementEnd }',
 	    DIRECTIVE_IDENTIFIER: 'TokenType{ DirectiveIdentifier }',
 	    DIRECTIVE_BODY_ITEM: 'TokenType{ DirectiveBodyItem }',
 	    INLINE_SUB_CONTEXT: 'TokenType{ InlineSubContext }'
@@ -711,13 +568,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 6 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
+	
+	var tokenType = __webpack_require__(6),
+	    ScanError = __webpack_require__(5).ScanError;
 
-	var tokenType = __webpack_require__(5),
-	    ScanError = __webpack_require__(4).ScanError;
-
+	var charRepeater = __webpack_require__(10).charRepeater,
+	    spaces = charRepeater(' '),
+	    carrots = charRepeater('^');
 
 	var rx = Object.freeze({
 	    COMMENT_TEST: /^\s*#.*$/,
@@ -733,12 +593,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	    ATTR_ACCESSOR_START: '[',
 	    ATTR_ACCESSOR_END: ']',
 	    TEXT_ACCESSOR: 'text',
-	    QUERY_END: ';'
+	    OWN_TEXT_ACCESSOR: 'text',
+	    FIELD_ACCESSOR_START: '.',
+	    STATEMENT_END: ';',
+	    PARAMS_START: ':',
+	    CONTINUATION: ','
 	});
 
 	var keywordSets = Object.freeze({
 	    QUERY_START: keywords.CSS_START + keywords.ACCESSOR_START,
-	    CSS_QUERY_END: keywords.ACCESSOR_START + keywords.QUERY_END
+	    CSS_STATEMENT_END: keywords.ACCESSOR_START + keywords.STATEMENT_END,
+	    DIRECTIVE_ID_END: keywords.PARAMS_START + keywords.STATEMENT_END,
+	    PARAM_END: ' ' + keywords.STATEMENT_END + keywords.CONTINUATION
 	});
 
 
@@ -759,6 +625,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            '     line num: ' + this.lineNum,
 	            '   start, end: ' + this.start + ', ' + this.end,
 	            '         line: ' + JSON.stringify(this.line),
+	            '                ' + spaces(this.start) + carrots(this.end - this.start),
 	            '}'
 	        ];
 	    offset = offset || '';
@@ -957,72 +824,95 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	Scanner.prototype._scanStatement = function _scanStatement() {
-	    var c = this._c;
-	    if (rx.ALPHA.test(c) || c === ':') {
-	        this._nextScan[0] = this._scanDirective;
-	        return this._makeMarkerToken(tokenType.DIRECTIVE_STATEMENT);
-
-	    } else if (keywordSets.QUERY_START.indexOf(c) > -1) {
-
+	    var isQuery = keywordSets.QUERY_START.indexOf(this._c) > -1;
+	    if (isQuery) {
 	        this._nextScan[0] = this._scanQuery;
 	        return this._makeMarkerToken(tokenType.QUERY_STATEMENT);
-
 	    } else {
-	        throw new ScanError(
-	            'Invalid statement: ' + JSON.stringify(this._toEolContent),
-	            this._line,
-	            this._lineNum,
-	            this._pos);
+	        this._nextScan[0] = this._scanDirective;
+	        return this._makeMarkerToken(tokenType.DIRECTIVE_STATEMENT);
 	    }
 	};
 
 	Scanner.prototype._scanDirective = function _scanDirective() {
 	    var tok;
-	    // a directive without any text is an alias to "save"
+	    // a directive with just ":" is the "save" alias, use ":" as the directive ID
+	    if (this._accept(keywords.PARAMS_START)) {
+	        this._nextScan[0] = this._scanDirectiveBody;
+	        return this._makeToken(tokenType.DIRECTIVE_IDENTIFIER);
+	    }
+	    if (this._acceptUntil(keywordSets.DIRECTIVE_ID_END) < 1) {
+	        throw new ScanError(
+	            'Invalid directive, 0 length: ' + JSON.stringify(this._toEolContent),
+	            this._line,
+	            this._lineNum,
+	            this._pos);
+	    }
+	    tok = this._makeToken(tokenType.DIRECTIVE_IDENTIFIER);
+	    if (this._eol || this._c === keywords.STATEMENT_END) {
+	        this._nextScan[0] = this._endDirective;
+	        return tok;
+	    }
 	    if (this._accept(':')) {
-	        tok = this._makeToken(tokenType.DIRECTIVE_IDENTIFIER);
+	        this._ignore();
 	        this._nextScan[0] = this._scanDirectiveBody;
 	        return tok;
 	    }
-	    // require an alpha to start
-	    if (!this._accept(undefined, true)) {
-	        throw new ScanError(
-	            'Invalid directive, must start with an alpha, not: ' + JSON.stringify(this._c),
-	            this._line,
-	            this._lineNum,
-	            this._pos);
-	    }
-	    this._acceptUntil(':');
-
-	    tok = this._makeToken(tokenType.DIRECTIVE_IDENTIFIER);
-	    if (!this._accept(':')) {
-	        throw new ScanError(
-	            'Invalid directive identifier terminator: ":" required, found: ' + JSON.stringify(this._c),
-	            this._line,
-	            this._lineNum,
-	            this._pos);
-	    }
-	    this._ignore();
-	    this._nextScan[0] = this._scanDirectiveBody;
-	    return tok;
+	    throw new ScanError(
+	        'Invalid directive identifier terminator: ' + JSON.stringify(this._c) +
+	        '. Either "' + keywords.PARAMS_START + '", "' + keywords.STATEMENT_END + '" or end of line required',
+	        this._line,
+	        this._lineNum,
+	        this._pos);
 	};
 
 	Scanner.prototype._scanDirectiveBody = function _scanDirectiveBody() {
-	    var tok;
 	    this._acceptRun(' ');
 	    this._ignore();
-	    if (this._acceptUntil(' ') < 1) {
+	    if (this._eol || this._c === keywords.STATEMENT_END) {
+	        return this._endDirective();
+	    }
+	    if (this._c === keywords.CONTINUATION) {
+	        // consume the line continuation character, any trailing whitespace
+	        // and then possibly continue to the next line
+	        this._accept(keywords.CONTINUATION);
+	        this._acceptRun(' ');
+	        this._ignore();
+	        if (this._eol && !this._nextLine()) {
+	            throw new ScanError(
+	                'Unexpected EOF, directive parameter expected.',
+	                this._line,
+	                this._lineNum,
+	                this._pos);
+	        }
+	        this._consumeRegex(/\s+/);
+	    }
+	    // scane the directive body item
+	    if (this._acceptUntil(keywordSets.PARAM_END) < 1) {
 	        throw new ScanError(
 	            'Invalid directive body item, 0 length',
 	            this._line,
 	            this._lineNum,
 	            this._pos);
 	    }
-	    tok = this._makeToken(tokenType.DIRECTIVE_BODY_ITEM);
-	    if (!this._eol) {
-	        this._nextScan[0] = this._scanDirectiveBody;
+	    this._nextScan[0] = this._scanDirectiveBody;
+	    return this._makeToken(tokenType.DIRECTIVE_BODY_ITEM);
+	};
+
+	Scanner.prototype._endDirective = function _endDirective() {
+	    var tok = this._makeMarkerToken(tokenType.DIRECTIVE_STATEMENT_END);
+	    if (this._eol) {
+	        return tok;
 	    }
-	    return tok;
+	    if (this._c === keywords.STATEMENT_END) {
+	        this._nextScan[0] = this._scanInlineSubContext;
+	        return tok;
+	    }
+	    throw new ScanError(
+	        'Invalid end of directive statement: ' + JSON.stringify(this._toEolContent),
+	        this._line,
+	        this._lineNum,
+	        this._pos);
 	};
 
 	Scanner.prototype._scanQuery = function _scanQuery() {
@@ -1046,7 +936,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this._acceptRun(' ');
 	    this._ignore();
 	    // if (this._acceptUntil(keywords.ACCESSOR_START) < 1) {
-	    if (this._acceptUntil(keywordSets.CSS_QUERY_END) < 1) {
+	    if (this._acceptUntil(keywordSets.CSS_STATEMENT_END) < 1) {
 	        throw new ScanError(
 	            'Invalid CSS Selector: ' + JSON.stringify(this._toEolContent),
 	            this._line,
@@ -1055,7 +945,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    tok = this._makeToken(tokenType.CSS_SELECTOR);
 
-	    if (this._eol || this._c === keywords.QUERY_END) {
+	    if (this._eol || this._c === keywords.STATEMENT_END) {
 	        this._nextScan[0] = this._endQueryStatement;
 
 	    } else if (this._c === keywords.ACCESSOR_START) {
@@ -1076,7 +966,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var tok = this._makeMarkerToken(tokenType.QUERY_STATEMENT_END);
 	    if (this._eol) {
 	        return tok;
-	    } else if (this._c === keywords.QUERY_END) {
+	    } else if (this._c === keywords.STATEMENT_END) {
 	        this._nextScan[0] = this._scanInlineSubContext;
 	        return tok;
 	    } else {
@@ -1104,7 +994,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        tok;
 	    this._acceptRun(' ');
 	    this._ignore();
-	    if (this._eol || this._c === keywords.QUERY_END) {
+	    if (this._eol || this._c === keywords.STATEMENT_END) {
 	        // the sequence has ended
 	        return this._endQueryStatement();
 	    }
@@ -1148,6 +1038,402 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this._ignore();
 	    this._nextScan[0] = this._scanStatement;
 	    return tok;
+	};
+
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	var jqProvider = __webpack_require__(3);
+
+	var UnexpectedTokenError = __webpack_require__(5).UnexpectedTokenError;
+
+	var tokenType = __webpack_require__(6);
+
+
+	function ensureJqApi(elm) {
+	    if (elm instanceof jqProvider) {
+	        return elm;
+	    }
+	    return jqProvider(elm);
+	}
+
+
+	function makeCssQuery(selector) {
+	    return function cssQuery(elm) {
+	        return ensureJqApi(elm).find(selector);
+	    };
+	}
+
+
+	function makeIndexQuery(indexStr) {
+	    var int = parseInt(indexStr, 10);
+	    return function indexQuery(elm) {
+	        return ensureJqApi(elm).eq(int);
+	    };
+	}
+
+
+	function textQuery(elm) {
+	    return ensureJqApi(elm).text();
+	}
+
+
+	function makeAttrQuery(attr) {
+	    return function attrQuery(elm) {
+	        return ensureJqApi(elm).attr(attr);
+	    };
+	}
+
+
+	function accessorSeq(parser) {
+	    var queries = [],
+	        tok = parser.nextToken(),
+	        attr,
+	        expected;
+	    if (tok.type === tokenType.INDEX_ACCESSOR) {
+	        queries.push(makeIndexQuery(tok.content));
+	        tok = parser.nextToken();
+	        // index accessor might be the only accessor
+	        if (tok.type === tokenType.QUERY_STATEMENT_END) {
+	            return queries;
+	        }
+	    }
+	    // can only have one of text or attr accessors
+	    if (tok.type === tokenType.TEXT_ACCESSOR) {
+	        queries.push(textQuery);
+	    } else if (tok.type === tokenType.ATTR_ACCESSOR) {
+	        // strip spaces and the brackets, ex: "[href]"
+	        attr = tok.content.trim().slice(1, -1);
+	        queries.push(makeAttrQuery(attr));
+	    } else {
+	        // if it got here, something is wrong, either the query should have ended after
+	        // an index accessor (if there was one) or a text or attr accessor should have
+	        // been encountered
+	        expected = [tokenType.TEXT_ACCESSOR, tokenType.ATTR_ACCESSOR];
+	        if (!queries.length) {
+	            expected.push(tokenType.INDEX_ACCESSOR);
+	        }
+	        throw new UnexpectedTokenError(tok.type, expected, tok);
+	    }
+	    tok = parser.nextToken();
+	    if (tok.type !== tokenType.QUERY_STATEMENT_END) {
+	        throw new UnexpectedTokenError(tok.type, tokenType.QUERY_STATEMENT_END, tok);
+	    }
+	    return queries;
+	}
+
+
+	function cssSelector(parser) {
+	    var selector = parser._tok.content.trim(),
+	        query = makeCssQuery(selector),
+	        tok = parser.nextToken();
+	    if (tok.type === tokenType.QUERY_STATEMENT_END) {
+	        return [query];
+	    } else if (tok.type === tokenType.ACCESSOR_SEQUENCE) {
+	        return [query].concat(accessorSeq(parser));
+	    } else {
+	        throw new UnexpectedTokenError(
+	            tok.type,
+	            [tokenType.QUERY_STATEMENT_END, tokenType.ACCESSOR_SEQUENCE],
+	            tok);
+	    }
+	}
+
+
+	function QueryNode(queries) {
+	    this._queries = queries;
+	}
+
+	QueryNode.prototype.exec = function exec(context) {
+	    var val = context.value,
+	        len = this._queries.length,
+	        i = 0;
+	    for (; i < len; i++) {
+	        val = this._queries[i](val);
+	    }
+	    context.lastValue = val;
+	};
+
+
+	exports.parse = function parseQuery(parser) {
+	    var tok = parser.nextToken(),
+	        queries;
+	    if (tok.type === tokenType.CSS_SELECTOR) {
+	        queries = cssSelector(parser);
+	    } else if (tok.type === tokenType.ACCESSOR_SEQUENCE) {
+	        queries = accessorSeq(parser);
+	    } else {
+	        throw new UnexpectedTokenError(
+	            tok.type,
+	            [tokenType.CSS_SELECTOR, tokenType.ACCESSOR_SEQUENCE],
+	            tok);
+	    }
+	    return new QueryNode(queries);
+	};
+
+
+/***/ },
+/* 9 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var errors = __webpack_require__(5),
+	    UnexpectedTokenError = errors.UnexpectedTokenError,
+	    TakeSyntaxError = errors.TakeSyntaxError;
+
+	var utils = __webpack_require__(10),
+	    getViaNameList = utils.getViaNameList,
+	    saveToNameList = utils.saveToNameList;
+
+	var tokenType = __webpack_require__(6);
+
+
+	function getOneParam(parser) {
+	    var tok = parser.nextToken(),
+	        endTok;
+	    if (tok.type !== tokenType.DIRECTIVE_BODY_ITEM) {
+	        throw new UnexpectedTokenError(
+	            tok.type,
+	            tokenType.DIRECTIVE_BODY_ITEM,
+	            tok);
+	    }
+	    endTok = parser.nextToken();
+	    if (endTok.type !== tokenType.DIRECTIVE_STATEMENT_END) {
+	        throw new UnexpectedTokenError(
+	            endTok.type,
+	            tokenType.DIRECTIVE_STATEMENT_END,
+	            endTok);
+	    }
+	    return tok;
+	}
+
+	function getSubContext(parser, directiveName) {
+	    // the next token should be a sub-context
+	    var tok = parser.nextToken(),
+	        subCtx,
+	        result;
+	    if (tok.type !== tokenType.CONTEXT) {
+	        throw new UnexpectedTokenError(
+	            tok.type,
+	            tokenType.CONTEXT,
+	            tok);
+	    }
+	    if (tok.end <= parser.depth) {
+	        throw new TakeSyntaxError('Invalid depth, expecting to start a "' + directiveName + '" context.', tok);
+	    }
+	    // parse the sub-context the `SaveEachNode` will manage
+	    subCtx = parser.spawnContextParser();
+	    result = subCtx.parse();
+	    subCtx.destroy();
+	    return result;
+	}
+
+
+	function SaveNode(nameParts) {
+	    this._nameParts = nameParts;
+	}
+
+	SaveNode.prototype.exec = function exec(context) {
+	    saveToNameList(context.rv, this._nameParts, context.value);
+	};
+
+	function makeSave(parser) {
+	    var tok = getOneParam(parser),
+	        nameParts = tok.content.trim().split('.');
+	    return {
+	        node: new SaveNode(nameParts),
+	        endTok: undefined
+	    };
+	}
+
+
+	function SaveEachNode(nameParts, subContextNode) {
+	    this._nameParts = nameParts;
+	    this._subContext = subContextNode;
+	}
+
+	SaveEachNode.prototype.exec = function exec(context) {
+	    var items = context.value,
+	        results = [],
+	        i = 0,
+	        subCtx,
+	        len,
+	        item,
+	        rv;
+	    saveToNameList(context.rv, this._nameParts, results);
+	    if (items == null || !items.length) {
+	        return;
+	    }
+	    subCtx = this._subContext;
+	    len = items.length;
+	    for (; i < len; i++) {
+	        item = items[i];
+	        rv = {};
+	        results.push(rv);
+	        subCtx.exec(undefined, rv, item, item);
+	    }
+	};
+
+	function makeSaveEach(parser) {
+	    var tok = getOneParam(parser),
+	        nameParts = tok.content.trim().split('.'),
+	        result = getSubContext(parser);
+	    return {
+	        node: new SaveEachNode(nameParts, result.node),
+	        endTok: result.endTok
+	    };
+	}
+
+
+	function DefSubroutineNode(subCtxNode) {
+	    this._subCtxNode = subCtxNode;
+	}
+
+	DefSubroutineNode.prototype.exec = function exec(context) {
+	    var rv = {};
+	    this._subCtxNode.exec(undefined, rv, context.value, context.value);
+	    context.lastValue = rv;
+	};
+
+	function makeDefSubroutine(parser) {
+	    var nameParts = [],
+	        tok = parser.nextToken(),
+	        defName,
+	        subCtxResult;
+	    // collect the name parts, which might be space separated, eg: 'def: some name'
+	    while (tok.type === tokenType.DIRECTIVE_BODY_ITEM) {
+	        nameParts.push(tok.content.trim());
+	        tok = parser.nextToken();
+	    }
+	    if (!nameParts.length) {
+	        throw new TakeSyntaxError('The `def` directive requires a parameter for the name', tok);
+	    }
+	    defName = nameParts.join(' ');
+	    if (tok.type !== tokenType.DIRECTIVE_STATEMENT_END) {
+	        throw new UnexpectedTokenError(tok.type, tokenType.DIRECTIVE_STATEMENT_END, tok);
+	    }
+	    // parse the sub context
+	    subCtxResult = getSubContext(parser);
+	    parser.defs[defName] = new DefSubroutineNode(subCtxResult.node);
+	    return {
+	        node: undefined,
+	        endTok: subCtxResult.endTok
+	    };
+	}
+
+
+	function NamespaceNode(identParts, subCtxNode) {
+	    this.identParts = identParts;
+	    this._subCtxNode = subCtxNode;
+	}
+
+	NamespaceNode.prototype.exec = function exec(context) {
+	    var subRv = getViaNameList(context.rv, this.identParts);
+	    if (subRv == null) {
+	        subRv = {};
+	        saveToNameList(context.rv, this.identParts, subRv);
+	    }
+	    this._subCtxNode.exec(undefined, subRv, context.value, context.value);
+	};
+
+	function makeNamespace(parser) {
+	    var tok = getOneParam(parser),
+	        nameParts = tok.content.trim().split('.'),
+	        result = getSubContext(parser);
+	    return {
+	        node: new NamespaceNode(nameParts, result.node),
+	        endTok: result.endTok
+	    };
+	}
+
+
+
+	module.exports = Object.freeze({
+	    save: makeSave,
+	    ':': makeSave,
+	    'save each': makeSaveEach,
+	    def: makeDefSubroutine,
+	    namespace: makeNamespace,
+	    '+': makeNamespace
+	});
+
+
+/***/ },
+/* 10 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	// `nameList` is an Array of strings which are used to look up
+	// possibly nested values in `src`. For example: `['a', 'b']`
+	// would return `src.a.b`.
+	exports.getViaNameList = function getViaNameList(src, nameList) {
+	    var max,
+	        i;
+	    if (nameList.length === 1) {
+	        return src[nameList[0]];
+	    }
+	    i = 0;
+	    max = nameList.length - 1;
+	    for (; i < max; i++) {
+	        src = src[nameList[i]];
+	    }
+	    // `i` ends up as last index
+	    return src[nameList[i]];
+	};
+
+
+	// `nameList` is an Array of strings which are used to save `value` to a
+	// possibly nested name in `dest`. For example: `['a', 'b']` will save
+	// result in `dest.a.b = value`
+	exports.saveToNameList = function saveToNameList(dest, nameList, value) {
+	    var part,
+	        max,
+	        i;
+	    if (nameList.length === 1) {
+	        dest[nameList[0]] = value;
+	    }
+	    i = 0;
+	    max = nameList.length - 1;
+	    for (; i < max; i++) {
+	        part = nameList[i];
+	        if (part in dest) {
+	            dest = dest[part];
+	        } else {
+	            dest = dest[part] = {};
+	        }
+	    }
+	    // `i` ends up as last index
+	    dest[nameList[i]] = value;
+	};
+
+
+	// util for adding padding (spaces) to a string
+	exports.charRepeater = function charRepeater(char) {
+	    var base = '' + char,
+	        baseLen = Math.pow(2, 6);
+	    while (base.length < baseLen) {
+	        base += base;
+	    }
+
+	    function repeater(len) {
+	        var rv;
+	        if (len < 1) {
+	            return '';
+	        }
+	        if (len <= baseLen) {
+	            return base.slice(-len);
+	        }
+	        rv = base + base;
+	        while (rv.length < len) {
+	            rv += base;
+	        }
+	        return rv.slice(-len);
+	    }
+	    return repeater;
 	};
 
 

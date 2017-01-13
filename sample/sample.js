@@ -3,7 +3,7 @@
 var fs = require('fs'),
     request = require('superagent');
 
-var TakeTemplate = require('..').TakeTemplate;
+var TakeTemplate = require('../lib').TakeTemplate;
 
 
 var REDDIT_URL = 'http://www.reddit.com',
@@ -15,7 +15,6 @@ var tmpl = fs.readFileSync(TMPL_PATH, {encoding: 'utf8'}),
     inlineTmpl = fs.readFileSync(INLINE_TMPL_PATH, {encoding: 'utf8'}),
     tt = new TakeTemplate(tmpl.split('\n')),
     inlineTT = new TakeTemplate(inlineTmpl.split('\n'));
-
 
 request
     .get(REDDIT_URL)
